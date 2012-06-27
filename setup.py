@@ -28,7 +28,8 @@ setup(
         "MySQL-python",
         "raven",
         "south",
-        "requests"
+        "requests",
+        "django-celery"
     ],
     zip_safe = False,
 )
