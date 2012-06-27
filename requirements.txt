@@ -1,0 +1,7 @@
+Django>=1.4.0
+pylibmc
+MySQL-python
+raven
+south
+requests
+django-celery
