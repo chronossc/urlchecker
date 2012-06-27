@@ -51,16 +51,21 @@ class URL(models.Model):
 
     def update_status(self):
         try:
-            logger.info(u"Checking url %s for user %s.",self.url,self.user.username)
+            logger.debug(u"Checking url %s for user %s.",self.url,self.user.username)
 
             url = urlparse.urlparse(self.url)
             self.hostname = url.hostname
             if self.hostname:
                 self.site_ip = socket.gethostbyname(self.hostname)
                 self.site_fqdn = socket.getfqdn(self.hostname)
-            request = requests.get(self.url)
-            self.web_server_name = request.headers.get('server','')
-            self.html_status_code = request.status_code
+            try:
+                request = requests.get(self.url)
+                self.web_server_name = request.headers.get('server','')
+                self.html_status_code = request.status_code
+            except requests.exceptions.Timeout:
+                self.html_status_code = request.codes.timeout
+
+
 
             self.last_time_checked = timezone.now()
 
@@ -71,7 +76,7 @@ class URL(models.Model):
                     self.site_fqdn != old.site_fqdn or \
                     self.web_server_name != old.web_server_name or \
                     self.html_status_code != old.html_status_code:
-                logger.info(u"Updating url %s for user %s.",self.url,self.user.username)
+
                 self.update_time = self.last_time_checked
 
                 # create a new history entry
@@ -82,7 +87,7 @@ class URL(models.Model):
                     web_server_name = self.web_server_name,
                     html_status_code = self.html_status_code
                 )
-
+                logger.info(u"Updated url %s for user %s.",self.url,self.user.username)
             self.save()
         except Exception as err:
             client.captureException()

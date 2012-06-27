@@ -30,7 +30,7 @@ def update_urls(url=None):
         # 120 seconds to create jobs for each url
         cache.set(key,True,120)
         for url in set(URL.objects.values_list('url',flat=True)):
-            logging.info(u"Putting %s in queue.",url)
+            logger.debug(u"Putting %s in queue.",url)
             update_urls.delay(url)
     else:
         cache.set(key,True,1200) # 20 minutes to run update status
