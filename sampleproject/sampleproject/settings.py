@@ -163,6 +163,7 @@ LOGGING = {
         'console': {
             'level':'DEBUG',
             'class':'logging.StreamHandler',
+
         },
         'sentry': {
             'level': 'ERROR',
@@ -179,11 +180,14 @@ LOGGING = {
             'level': 'WARN',
             'handlers': ['console'],
             'propagate': False,
+            'formater': 'verbose',
+
         },
         'urlchecker.server': {
-            'level': 'WARN',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'handlers': ['console','sentry','mail_admins'],
-            'propagate': False
+            'propagate': False,
+            'formater': 'verbose',
         }
     }
 }

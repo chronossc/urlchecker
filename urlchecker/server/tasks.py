@@ -1,8 +1,11 @@
 # coding: utf-8
+import logging
 from celery.task import task
 from django.core.cache import cache
 from hashlib import md5
 from .models import URL
+
+logger = logging.getLogger(__name__)
 
 @task
 def update_urls(url=None):
@@ -26,7 +29,8 @@ def update_urls(url=None):
     if url is None:
         # 120 seconds to create jobs for each url
         cache.set(key,True,120)
-        for url in set(URL.objects.values_list('url',flat=True))
+        for url in set(URL.objects.values_list('url',flat=True)):
+            logging.info(u"Putting %s in queue.",url)
             update_urls.delay(url)
     else:
         cache.set(key,True,1200) # 20 minutes to run update status
@@ -37,6 +41,7 @@ def update_urls(url=None):
 
         # call url.update_status for each url
         for url in urls:
+
             url.update_status()
 
     cache.delete(key)
