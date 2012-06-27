@@ -5,3 +5,4 @@ raven
 south
 requests
 django-celery
+IPy

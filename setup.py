@@ -30,6 +30,7 @@ setup(
         "south",
         "requests",
         "django-celery"
+        "IPy"
     ],
     zip_safe = False,
 )
