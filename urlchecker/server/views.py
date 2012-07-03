@@ -3,14 +3,66 @@ try:
     import simplejson
 except ImportError:
     from django.utils import simplejson
-
-from django.core.http import HttpResponse, HttpResponseForbidden, \
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import URLValidator, ValidationError
+from django.http import HttpResponse, HttpResponseForbidden, \
     HttpResponseNotModified, HttpResponseBadRequest, HttpResponse, \
     HttpResponseNotAllowed, HttpResponseServerError
+
 from django.utils import timezone
-from django.core.validators import URLValidator, ValidationError
+from django.views.decorators.csrf import csrf_exempt
+
 from raven.contrib.django.models import client
 
+from .models import Key, URL
+
+def cache_and_send(urlobj,json,code):
+    """ cache response content and return response """
+    cache_key = "%s:%s" % (urlobj.user.username,urlobj.url)
+    cached = cache.has_key(cache_key)
+    response = simplejson.dumps(json)
+    if code in (200,304):
+        timeout=1800 # 30 minutes
+    else:
+        timeout=180 # 3 minutes
+    cache.set(cache_key,(code,response),timeout) 
+
+    if code == 200 and cached:
+        cache.set(cache_key,(304,response),timeout)
+
+    return response_from_cache(urlobj.url,urlobj.user.username)
+
+class CacheKeyError(KeyError):
+    pass
+
+def response_from_cache(url,username):
+    """ Get response code and text from cache and return it """
+    cache_key = "%s:%s" % (username,url)
+
+    if not cache.has_key(cache_key):
+        raise CacheKeyError(u"%s isn't in cache." % cache_key)
+
+    code,response = cache.get(cache_key)
+
+    if code == 200:
+        return HttpResponse(response,mimetype='application/json')
+
+    if code == 304:
+        return HttpResponseNotModified(response,mimetype='application/json')
+
+    if code == 400:
+        return HttpResponseBadRequest(response,mimetype='application/json')
+
+    if code == 403:
+        return HttpResponseForbidden(response,mimetype='application/json')
+
+    if code == 412:
+        return HttpResponseBadRequest(response,mimetype='application/json')
+
+    return HttpResponse(response,status=code,mimetype='application/json')
+
+@csrf_exempt
 def query_url(request):
     """
     This view returns status for url.
@@ -31,6 +83,9 @@ def query_url(request):
     }
 
     if not request.method == 'POST':
+        if not request.is_ajax():
+            return HttpResponseBadRequest('This url should be requested via'\
+                ' Ajax POST requests ')
         return HttpResponseNotAllowed(['POST'])
 
     # TODO: if you have more views that use key put it in a decorator
@@ -67,33 +122,44 @@ def query_url(request):
                 {'code':400,'msg':messages['url_malformed']}),
                 mimetype='application/json')
 
-        urlobj, created = URL.objects.get_or_create(user=request.user,url=url)
+        try:
+            return response_from_cache(url,request.user.username)
+        except CacheKeyError:
+            pass
 
-        if created:
+        urlobj, created = URL.objects.get_or_create(user=request.user,url=url)
+        if not urlobj.last_time_checked:
             try:
                 urlobj.update_status()
-            except Exeption as err:
+            except Exception, err:
                 from .tasks import update_urls
                 update_urls.delay(urlobj.url)
-                return HttpResponseServerError(simplejson.dumps(
+                return cache_and_send(urlobj,
                     {'code':500,
                      'msg':'Server error. Task was sent to queue. '\
                         'Try again in some minutes.',
-                      'error':unicode(err)}),
-                    mimetype='application/json')
+                      'error':unicode(err)},500)
+
+        if urlobj.get_ip_type() in ["RESERVED","SPECIALPURPOSE","LOOPBACK"]:
+            msg = u"%s is a %s IP and will not be checked." % (
+                urlobj.site_ip, urlobj.get_ip_type())
+            return cache_and_send(urlobj,{'code':412,'msg':msg},412)
+        if not getattr(settings,"URLCHECK_ALLOW_PRIVATE_IPS",False) and \
+            urlobj.get_ip_type() == "PRIVATE":
+            msg = u"%s is a %s IP and will not be checked. Set "\
+                "URLCHECK_ALLOW_PRIVATE_IPS in settings.py to check this IPs." % (
+                    urlobj.site_ip,urlobj.get_ip_type())
+            return cache_and_send(urlobj,{'code':412,'msg':msg},412)
 
         try:
             url_data = urlobj.get_status()
             if not created and urlobj.update_time < urlobj.last_time_checked:
-                return HttpResponseNotModified(simplejson.dumps({'code': 304,
-                    'msg': 'OK', 'data': url_data}),mimetype='application/json')
+                return cache_and_send(urlobj,{'code': 304,
+                    'msg': 'OK', 'data': url_data},304)
             else:
-                return HttpResponse(simplejson.dumps({'code': 200, 'msg': 'OK',
-                    'data': url_data}),mimetype='application/json')
+                return cache_and_send(urlobj,{'code': 200, 'msg': 'OK',
+                    'data': url_data},200)
         except Exception, err:
             sentry_id = client.captureException()
-            return HttpResponseServerError(simplejson.dumps(
-                {'code':500,'msg':'Server error','error':unicode(err)}),
-                mimetype='application/json')
-
-
+            return cache_and_send(urlobj,{'code':500,'msg':'Server error',
+                'error':unicode(err)},500)

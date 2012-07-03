@@ -8,8 +8,8 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding model 'Keys'
-        db.create_table('server_keys', (
+        # Adding model 'Key'
+        db.create_table('server_key', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('user', self.gf('django.db.models.fields.related.OneToOneField')(related_name='keys', unique=True, to=orm['auth.User'])),
             ('key', self.gf('django.db.models.fields.CharField')(max_length=250)),
@@ -17,7 +17,7 @@ class Migration(SchemaMigration):
             ('valid_until', self.gf('django.db.models.fields.DateTimeField')(default=None)),
             ('active', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
-        db.send_create_signal('server', ['Keys'])
+        db.send_create_signal('server', ['Key'])
 
         # Adding model 'URL'
         db.create_table('server_url', (
@@ -53,8 +53,8 @@ class Migration(SchemaMigration):
         # Removing unique constraint on 'URL', fields ['user', 'url']
         db.delete_unique('server_url', ['user_id', 'url'])
 
-        # Deleting model 'Keys'
-        db.delete_table('server_keys')
+        # Deleting model 'Key'
+        db.delete_table('server_key')
 
         # Deleting model 'URL'
         db.delete_table('server_url')
@@ -100,8 +100,8 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        'server.keys': {
-            'Meta': {'object_name': 'Keys'},
+        'server.key': {
+            'Meta': {'object_name': 'Key'},
             'active': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'creation_data': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),

@@ -1,4 +1,6 @@
 # Django settings for sampleproject project.
+import time
+from hashlib import md5
 from os.path import dirname, abspath, realpath, join
 PROJECT_ROOT = realpath(abspath(join(dirname(__file__),'..')))
 
@@ -100,7 +102,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'raven.contrib.django.middleware.SentryResponseIdMiddleware',
+    'raven.contrib.django.middleware.SentryResponseErrorIdMiddleware',
 )
 
 ROOT_URLCONF = 'sampleproject.urls'
@@ -189,6 +191,15 @@ LOGGING = {
             'propagate': False,
             'formater': 'verbose',
         }
+    }
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.PyLibMCCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': 3600,
+        'KEY_PREFIX': md5(SECRET_KEY+str(time.time())).hexdigest()
     }
 }
 

@@ -14,7 +14,7 @@ from raven.contrib.django.models import client
 logger = logging.getLogger(__name__)
 
 # Create your models here.
-class Keys(models.Model):
+class Key(models.Model):
     """ Store keys that has access to system, related to a user """
     user = models.OneToOneField(User,related_name='keys')
     key = models.CharField(max_length=250)
@@ -82,17 +82,6 @@ class URL(models.Model):
         RESERVED, SPECIALPURPOSE and LOOPBACK IPs will not be checked aniway.
 
         """
-        if self.get_ip_type() in ["RESERVED","SPECIALPURPOSE","LOOPBACK"]:
-            logger.warn(u"%s is a %s IP and will not be checked.",self.site_ip,
-                self.get_ip_type())
-            return
-        if not getattr(settings,"URLCHECK_ALLOW_PRIVATE_IPS",False) and \
-                self.get_ip_type() == "PRIVATE":
-            logger.warn(u"%s is a %s IP and will not be checked. Set "\
-                "URLCHECK_ALLOW_PRIVATE_IPS in settings.py to check this IPs.",
-                self.site_ip,self.get_ip_type())
-
-            return
         try:
             logger.debug(u"Checking url %s for user %s.",self.url,self.user.username)
 
@@ -101,6 +90,16 @@ class URL(models.Model):
             if self.hostname:
                 self.site_ip = socket.gethostbyname(self.hostname)
                 self.site_fqdn = socket.getfqdn(self.hostname)
+            if self.get_ip_type() in ["RESERVED","SPECIALPURPOSE","LOOPBACK"]:
+                logger.warn(u"%s is a %s IP and will not be checked.",self.site_ip,
+                self.get_ip_type())
+                return
+            if not getattr(settings,"URLCHECK_ALLOW_PRIVATE_IPS",False) and \
+                self.get_ip_type() == "PRIVATE":
+                logger.warn(u"%s is a %s IP and will not be checked. Set "\
+                "URLCHECK_ALLOW_PRIVATE_IPS in settings.py to check this IPs.",
+                self.site_ip,self.get_ip_type())
+                return
             try:
                 request = requests.get(self.url)
                 self.web_server_name = request.headers.get('server','')
@@ -132,6 +131,20 @@ class URL(models.Model):
             self.save()
         except Exception as err:
             client.captureException()
+
+    def get_status(self):
+        if not self.last_time_checked:
+            self.update_status()
+        return {
+            'url':self.url,
+            'site_ip':self.site_ip,
+            'site_fqdn':self.site_fqdn,
+            'site_ip_type':self.get_ip_type(),
+            'web_server_name':self.web_server_name,
+            'html_status_code':self.html_status_code,
+            'update_time': str(self.update_time),
+            'last_time_checked': str(self.last_time_checked)
+        }
 
 
 class URLStatusHistory(models.Model):
