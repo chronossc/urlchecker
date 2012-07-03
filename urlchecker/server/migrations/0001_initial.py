@@ -11,7 +11,7 @@ class Migration(SchemaMigration):
         # Adding model 'Keys'
         db.create_table('server_keys', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('user', self.gf('django.db.models.fields.related.ForeignKey')(related_name='keys', to=orm['auth.User'])),
+            ('user', self.gf('django.db.models.fields.related.OneToOneField')(related_name='keys', unique=True, to=orm['auth.User'])),
             ('key', self.gf('django.db.models.fields.CharField')(max_length=250)),
             ('creation_data', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
             ('valid_until', self.gf('django.db.models.fields.DateTimeField')(default=None)),
@@ -106,7 +106,7 @@ class Migration(SchemaMigration):
             'creation_data': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '250'}),
-            'user': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'keys'", 'to': "orm['auth.User']"}),
+            'user': ('django.db.models.fields.related.OneToOneField', [], {'related_name': "'keys'", 'unique': 'True', 'to': "orm['auth.User']"}),
             'valid_until': ('django.db.models.fields.DateTimeField', [], {'default': 'None'})
         },
         'server.url': {

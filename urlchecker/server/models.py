@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Create your models here.
 class Keys(models.Model):
     """ Store keys that has access to system, related to a user """
-    user = models.ForeignKey(User,related_name='keys')
+    user = models.OneToOneField(User,related_name='keys')
     key = models.CharField(max_length=250)
     creation_data = models.DateTimeField(auto_now_add=True)
     valid_until = models.DateTimeField(default=None)
