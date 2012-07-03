@@ -1,8 +1,11 @@
 # coding: utf-8
+import logging
+
 try:
     import simplejson
 except ImportError:
     from django.utils import simplejson
+
 from django.conf import settings
 from django.core.cache import cache
 from django.core.validators import URLValidator, ValidationError
@@ -17,6 +20,8 @@ from raven.contrib.django.models import client
 
 from .models import Key, URL
 
+logger = logging.getLogger(__name__)
+
 def cache_and_send(urlobj,json,code):
     """ cache response content and return response """
     cache_key = "%s:%s" % (urlobj.user.username,urlobj.url)
@@ -26,7 +31,7 @@ def cache_and_send(urlobj,json,code):
         timeout=1800 # 30 minutes
     else:
         timeout=180 # 3 minutes
-    cache.set(cache_key,(code,response),timeout) 
+    cache.set(cache_key,(code,response),timeout)
 
     if code == 200 and cached:
         cache.set(cache_key,(304,response),timeout)
@@ -122,6 +127,7 @@ def query_url(request):
                 {'code':400,'msg':messages['url_malformed']}),
                 mimetype='application/json')
 
+        # try to get from cache
         try:
             return response_from_cache(url,request.user.username)
         except CacheKeyError:
@@ -160,6 +166,8 @@ def query_url(request):
                 return cache_and_send(urlobj,{'code': 200, 'msg': 'OK',
                     'data': url_data},200)
         except Exception, err:
-            sentry_id = client.captureException()
+            sentry_id = client.get_ident(client.captureException())
+            logger.error(u"Error processing url %s [Sentry ID '%s']",
+                url,sentry_id)
             return cache_and_send(urlobj,{'code':500,'msg':'Server error',
                 'error':unicode(err)},500)

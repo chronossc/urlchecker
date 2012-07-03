@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 @task
 def update_urls(url=None):
     """
-    This task act as celery cronjob to launch himself for each url and  update  url
+    This task act as celery cronjob to launch himself for each url and update url
     information on db.
 
     It accept a url instance, but prefer to send just url value because we can
@@ -41,7 +41,6 @@ def update_urls(url=None):
 
         # call url.update_status for each url
         for url in urls:
-
             url.update_status()
 
     cache.delete(key)

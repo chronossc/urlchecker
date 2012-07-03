@@ -130,7 +130,12 @@ class URL(models.Model):
                 logger.info(u"Updated url %s for user %s.",self.url,self.user.username)
             self.save()
         except Exception as err:
-            client.captureException()
+            sentry_id = client.get_ident(client.captureException())
+            logger.error(u"Error on update url status [Sentry ID '%s']",
+                sentry_id)
+        # remove key from cache so next request to status cache response again
+        cache_key = "%s:%s" % (self.user.username,self.url)
+        cache.delete(cache_key)
 
     def get_status(self):
         if not self.last_time_checked:

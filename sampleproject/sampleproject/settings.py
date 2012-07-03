@@ -131,6 +131,7 @@ INSTALLED_APPS = (
     'raven.contrib.django',
     # my apps
     'urlchecker.server',
+    'urlchecker.client',
 
 )
 
@@ -204,6 +205,9 @@ CACHES = {
 }
 
 SENTRY_DSN = None # fill with your sentry dsn here
+
+URLCHECKER_SERVER="http://felipe-prenholato.me:8005"
+URLCHECKER_KEY="kot5Oc<>bimUf6|GleirnUj85Dukoon<4-BlucdigLeb|onEb2"
 
 try:
     execfile(join(PROJECT_ROOT,'sampleproject', 'settings_local.py'), globals(), locals())
